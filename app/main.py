@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 
-models.Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI()
 
@@ -16,6 +16,11 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.on_event("startup")
+async def startup():
+    models.Base.metadata.create_all(bind=engine)
+    
 
 
 @app.post("/employees/", response_model=schemas.EmployeeResponse)
@@ -41,8 +46,9 @@ def read_user(emp_id: int, db: Session = Depends(get_db)):
 def update_employee(
     emp_id: int, employee_update: schemas.EmployeeCreate, db: Session = Depends(get_db)
 ):
-    if crud.update_employee(db=db, emp_id=emp_id, employee_update=employee_update):
-        return
+    db_employee = crud.update_employee(db=db, emp_id=emp_id, employee_update=employee_update)
+    if db_employee:
+        return db_employee
     else:
         raise HTTPException(status_code=404, detail="Employee not found")
 
